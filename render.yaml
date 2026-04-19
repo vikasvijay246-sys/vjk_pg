@@ -1,0 +1,87 @@
+# ════════════════════════════════════════════════════════════════
+#  render.yaml — One-click deploy for PG Manager Pro
+#  Drop this file in your repo root and connect to Render.
+#  https://render.com/docs/blueprint-spec
+# ════════════════════════════════════════════════════════════════
+
+services:
+  - type: web
+    name: pg-manager-pro
+    runtime: python
+    region: singapore        # closest to India; change to oregon/frankfurt as needed
+    plan: free               # upgrade to starter ($7/mo) for always-on
+    branch: main
+
+    # ── Build ────────────────────────────────────────────────────
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
+    # Note: db.create_all() runs automatically on first request via app startup.
+    # Flask-Migrate is available but manual migration runs are NOT needed for
+    # a fresh deploy — create_all() handles table creation idempotently.
+
+    # ── Start ────────────────────────────────────────────────────
+    startCommand: >
+      gunicorn
+      --worker-class gevent
+      --workers 1
+      --worker-connections 1000
+      --bind 0.0.0.0:$PORT
+      --timeout 120
+      --keep-alive 5
+      --log-level info
+      wsgi:app
+
+    # ── Health check ─────────────────────────────────────────────
+    healthCheckPath: /api/auth/validate
+
+    # ── Environment variables ────────────────────────────────────
+    envVars:
+      - key: FLASK_ENV
+        value: production
+
+      - key: SOCKETIO_ASYNC_MODE
+        value: gevent
+
+      - key: PYTHON_VERSION
+        value: 3.11.9           # stable, fully compatible with all packages
+
+      # Auto-generated secrets (Render creates these on first deploy)
+      - key: SECRET_KEY
+        generateValue: true
+
+      - key: JWT_SECRET_KEY
+        generateValue: true
+
+      # PostgreSQL connection string (filled automatically from database below)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pg-manager-db
+          property: connectionString
+
+      # Render sets this automatically — used by config.py to choose /tmp uploads
+      - key: RENDER
+        value: "true"
+
+      # Optional: persistent file storage (add a Render Disk and set mount path)
+      # - key: RENDER_DISK_PATH
+      #   value: /var/data
+
+      # Optional: AWS S3 for media uploads
+      # - key: S3_BUCKET
+      #   value: your-bucket-name
+      # - key: AWS_ACCESS_KEY_ID
+      #   sync: false
+      # - key: AWS_SECRET_ACCESS_KEY
+      #   sync: false
+      # - key: AWS_REGION
+      #   value: ap-south-1
+
+      # Optional: Firebase FCM push notifications
+      # - key: FIREBASE_CREDENTIALS_PATH
+      #   value: /etc/secrets/firebase.json
+
+databases:
+  - name: pg-manager-db
+    plan: free
+    region: singapore
+    databaseName: pg_manager
+    user: pg_manager_user
