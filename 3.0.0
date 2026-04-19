@@ -1,0 +1,2 @@
+Requirement already satisfied: Werkzeug in e:\vijay\pg-pro-integrated\venv\lib\site-packages (2.3.7)
+Requirement already satisfied: MarkupSafe>=2.1.1 in e:\vijay\pg-pro-integrated\venv\lib\site-packages (from Werkzeug) (3.0.3)
